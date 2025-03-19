@@ -1,0 +1,204 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reward App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Reward App 🎉</h1>
+
+        <!-- Display Points -->
+        <div class="points-box">
+            <p>Your Points: <span id="points">0</span></p>
+        </div>
+
+        <!-- Watch Ad Button -->
+        <button id="watchAdBtn">Watch Ad (Get 50 Points)</button>
+
+        <!-- Withdrawal Section -->
+        <div class="withdrawal-box">
+            <input type="text" id="upiInput" placeholder="Enter your UPI ID" />
+
+            <div class="withdrawal-options">
+                <label><input type="radio" name="withdrawalOption" value="1500-40"> 1500 Points = ₹40</label><br>
+                <label><input type="radio" name="withdrawalOption" value="3000-70"> 3000 Points = ₹70</label><br>
+                <label><input type="radio" name="withdrawalOption" value="5000-100"> 5000 Points = ₹100</label><br>
+            </div>
+
+            <div>
+                <input type="text" id="cashAmount" placeholder="Selected Amount" readonly />
+            </div>
+
+            <button id="withdrawBtn">Request Withdrawal</button>
+        </div>
+
+        <!-- Withdrawal Message -->
+        <div id="withdrawMessage"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
+    <script src="script.js"></script>
+</body>
+</html><style>body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.points-box, .withdrawal-box {
+    margin: 20px 0;
+}
+
+#withdrawMessage {
+    margin-top: 20px;
+    color: blue;
+    font-weight: bold;
+}
+
+.withdrawal-options {
+    margin-top: 10px;
+    text-align: left;
+}</style><script>let points = 0;
+let selectedAmount = 0;
+
+// Update Points Display
+function updatePoints() {
+    document.getElementById('points').textContent = points;
+}
+
+// Load Points from Firebase
+function loadPoints() {
+    const userId = "user123";
+
+    db.collection("users").doc(userId).get()
+        .then((doc) => {
+            if (doc.exists) {
+                points = doc.data().points || 0;
+                updatePoints();
+            } else {
+                db.collection("users").doc(userId).set({ points: 0 });
+            }
+        })
+        .catch((error) => console.error("Error loading points: ", error));
+}
+
+// Save Points to Firebase
+function savePoints() {
+    const userId = "user123";
+
+    db.collection("users").doc(userId).update({
+        points: points
+    })
+    .then(() => console.log("Points saved successfully."))
+    .catch((error) => console.error("Error saving points: ", error));
+}
+
+// Ad Watching System
+document.getElementById('watchAdBtn').addEventListener('click', () => {
+    alert("Ad Watched! You earned 50 points.");
+    points += 50;
+    updatePoints();
+    savePoints();
+});
+
+// Withdrawal Option Selection
+document.querySelectorAll('input[name="withdrawalOption"]').forEach((input) => {
+    input.addEventListener('change', () => {
+        const [requiredPoints, amount] = input.value.split('-').map(Number);
+
+        if (points >= requiredPoints) {
+            selectedAmount = amount;
+            document.getElementById('cashAmount').value = `₹${selectedAmount}`;
+        } else {
+            alert(`You need at least ${requiredPoints} points to redeem this reward.`);
+            input.checked = false;
+            document.getElementById('cashAmount').value = "";
+        }
+    });
+});
+
+// Withdrawal Request System
+document.getElementById('withdrawBtn').addEventListener('click', () => {
+    const upiId = document.getElementById('upiInput').value.trim();
+
+    if (!upiId) {
+        alert("Please enter a valid UPI ID.");
+        return;
+    }
+    if (!selectedAmount) {
+        alert("Please select a withdrawal option.");
+        return;
+    }
+
+    document.getElementById('withdrawMessage').innerHTML = 
+        "Your request has been sent to the developer and your reward will be processed after 1 hour.";
+
+    saveWithdrawalRequest(upiId, selectedAmount);
+    points = 0;
+    updatePoints();
+    savePoints();
+    document.getElementById('upiInput').value = "";
+    document.getElementById('cashAmount').value = "";
+    selectedAmount = 0;
+});
+
+// Save Withdrawal Request to Firebase
+function saveWithdrawalRequest(upiId, amount) {
+    db.collection("withdrawalRequests").add({
+        upiId: upiId,
+        amount: amount,
+        status: "Pending",
+        timestamp: new Date().toISOString()
+    })
+    .then(() => console.log("Withdrawal request saved successfully."))
+    .catch((error) => console.error("Error saving withdrawal request: ", error));
+}
+
+// Firebase Configuration (Replace with your Firebase Config)
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Load Points when the page loads
+loadPoints();</script>
